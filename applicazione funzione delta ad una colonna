@@ -1,0 +1,5 @@
+df['mean_ecg_delta'] = df.apply(
+    lambda row: np.mean(deltas(row['ecg_pulses'], row['duration'])) 
+    if isinstance(row['ecg_pulses'], list) else np.nan, 
+    axis=1
+)
