@@ -1,0 +1,40 @@
+
+import matplotlib.pyplot as plt
+
+# ### Exercise 3
+
+# 1. Filtriamo il dataframe per il cane con pet_id 22
+dog_22 = df_dogs[df_dogs['pet_id'] == 22]
+
+plt.figure(figsize=(12, 8))
+
+# 2. Iteriamo sulle 30 registrazioni di questo cane
+# Usiamo enumerate per avere un indice (i) che useremo come coordinata Y
+for i, (record_id, row) in enumerate(dog_22.iterrows()):
+    
+    # 3. Trasformiamo la stringa di impulsi in una lista di numeri (float)
+    # E prendiamo solo i primi 15
+    pulses_str = row['ecg_pulses']
+    pulses_list = [float(x) for x in pulses_str.split(',')]
+    first_15_pulses = pulses_list[:15]
+    
+    # 4. Creiamo lo scatter plot per questa riga
+    # X = i valori dei primi 15 impulsi (tempo in secondi)
+    # Y = l'indice della registrazione (tutti i punti di una riga hanno lo stesso Y)
+    plt.scatter(first_15_pulses, 
+                [i] * len(first_15_pulses), 
+                alpha=0.7, 
+                s=30, 
+                label=f"Rec {record_id}" if i < 5 else "") # Label solo per i primi per non intasare la legenda
+
+# 5. Formattazione del grafico
+plt.title('First 15 ECG Pulses - Dog ID: 22 (30 Recordings)', fontsize=14)
+plt.xlabel('Time from start of recording (seconds)', fontsize=12)
+plt.ylabel('Recording sequence', fontsize=12)
+
+# Mostriamo tutti i 30 step sull'asse Y
+plt.yticks(range(30))
+
+plt.grid(True, axis='x', linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
