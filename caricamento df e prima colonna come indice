@@ -1,0 +1,6 @@
+import pandas as pd
+
+# ### Exercise 1
+# Carichiamo il dataset 'dogs.csv'
+# index_col=0 indica a Pandas di usare la prima colonna come indice del DataFrame
+df_dogs = pd.read_csv('dogs.csv', index_col=0)
