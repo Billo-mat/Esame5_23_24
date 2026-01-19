@@ -1,0 +1,191 @@
+import pandas as pd
+import numpy as np
+# ### Exercise 1
+# Carichiamo il dataset 'dogs.csv'
+# index_col=0 indica a Pandas di usare la prima colonna come indice del DataFrame
+df = pd.read_csv('dogs.csv', index_col=0)
+df['ecg_pulses'] = df['ecg_pulses'].apply(lambda x: [float(i) for i in x.split(',')] if isinstance(x, str) else x)
+# Visualizziamo le prime righe per verificare il caricamento
+print(df.head())
+
+# ### Exercise 2
+
+# 1. Raggruppiamo per 'pet_id' e selezioniamo le colonne da controllare.
+# .nunique() restituirà il numero di valori unici per ogni cane.
+check_consistency = df.groupby('pet_id')[['breeds', 'weight', 'age']].nunique()
+
+# 2. Scriviamo l'asserzione (Assertion).
+# Se tutto è coerente, ogni cella di 'check_consistency' deve essere uguale a 1.
+# .all().all() verifica che questa condizione sia vera per ogni riga e ogni colonna.
+assert (check_consistency <= 1).all().all(), "Errore di coerenza: un cane ha più valori diversi per breeds, weight o age."
+
+# Se l'esecuzione continua senza errori, il controllo è superato.
+print("Check di coerenza superato con successo.")
+
+
+import matplotlib.pyplot as plt
+
+# ### Exercise 3
+
+# 1. Filtriamo il dataframe per il cane con pet_id 22
+dog_22 = df[df['pet_id'] == 22]
+
+plt.figure(figsize=(12, 8))
+
+# 2. Iteriamo sulle 30 registrazioni di questo cane
+# Usiamo enumerate per avere un indice (i) che useremo come coordinata Y
+for i, (record_id, row) in enumerate(dog_22.iterrows()):
+    
+    # 3. Trasformiamo la stringa di impulsi in una lista di numeri (float)
+    # E prendiamo solo i primi 15
+    pulses_str = row['ecg_pulses']
+    # Invece di pulses_str.split(',')
+    pulses_list = row['ecg_pulses'] # È già una lista grazie alla conversione iniziale
+    if isinstance(pulses_list, list): # Sicurezza per i NaN
+        first_15_pulses = pulses_list[:15]
+    # 4. Creiamo lo scatter plot per questa riga
+    # X = i valori dei primi 15 impulsi (tempo in secondi)
+    # Y = l'indice della registrazione (tutti i punti di una riga hanno lo stesso Y)
+    plt.scatter(first_15_pulses, 
+                [i] * len(first_15_pulses), 
+                alpha=0.7, 
+                s=30, 
+                label=f"Rec {record_id}" if i < 5 else "") # Label solo per i primi per non intasare la legenda
+
+# 5. Formattazione del grafico
+plt.title('First 15 ECG Pulses - Dog ID: 22 (30 Recordings)', fontsize=14)
+plt.xlabel('Time from start of recording (seconds)', fontsize=12)
+
+
+import pymc as pm
+import arviz as az
+
+# Prepariamo i dati dal dataframe 'obs' creato nell'esercizio precedente
+# Rimuoviamo eventuali righe con NaN per evitare errori nel campionamento
+data = obs.dropna(subset=['mean_ecg_delta', 'weight'])
+
+W = data['weight'].values
+y_obs = data['mean_ecg_delta'].values
+
+# Definizione del modello PyMC
+with pm.Model() as model:
+    # 1. Definiamo le distribuzioni a priori (Priors) per i parametri
+    alpha = pm.Normal('alpha', mu=0, sigma=1)
+    beta = pm.Normal('beta', mu=1, sigma=1)
+    
+    # 2. Parametro gamma (esponenziale con lambda=1)
+    # Nota: in PyMC 'lam' è il parametro della distribuzione Exponential
+    gamma = pm.Exponential('gamma', lam=1)
+    
+    # 3. Definiamo la media del modello (Equazione lineare)
+    # mu = alpha + beta * W
+    mu = alpha + beta * W
+    
+    # 4. Definiamo la Likelihood (Verosimiglianza)
+    # I dati osservati seguono una normale con media mu e deviazione standard gamma
+    y = pm.Normal('y', mu=mu, sigma=gamma, observed=y_obs)
+    
+    # 5. Campionamento (Inference)
+    # draws=1000 è lo standard per avere una buona precisione
+    trace = pm.sample(1000, return_inferencedata=True)
+
+# 6. Visualizzazione dei risultati
+# az.plot_posterior mostra la distribuzione di probabilità dei parametri stimati
+az.plot_posterior(trace, var_names=['alpha', 'beta', 'gamma'])
+plt.show()
+
+# Stampa del riassunto statistico (opzionale ma utile)
+print(az.summary(trace))
+plt.ylabel('Recording sequence', fontsize=12)
+
+# Mostriamo tutti i 30 step sull'asse Y
+plt.yticks(range(30))
+
+plt.grid(True, axis='x', linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+from typing import List
+
+def deltas(values: List[float], total_duration: float) -> List[float]:
+    """
+    Calculates the differences between sorted values, including boundaries.
+    
+    >>> deltas([0.98, 2.51, 2.82, 3.39], 4)
+    [0.98, 1.53, 0.31, 0.57, 0.61]
+    """
+    if not values:
+        return [total_duration]
+
+    res = []
+    
+    # Add the first delta (from 0 to values[0])
+    res.append(values[0])
+    
+    # Add the intermediate deltas
+    for i in range(1, len(values)):
+        diff = values[i] - values[i-1]
+        res.append(round(diff, 2)) # Rounding helps avoid floating point precision issues
+        
+    # Add the last delta (from last value to total duration)
+    res.append(round(total_duration - values[-1], 2))
+    
+    return res
+
+
+df['mean_ecg_delta'] = df.apply(
+    lambda row: np.mean(deltas(row['ecg_pulses'], row['duration'])) 
+    if isinstance(row['ecg_pulses'], list) else np.nan, 
+    axis=1
+)
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- ESERCIZIO 6 ---
+dog_32 = df[df['pet_id'] == 32]
+
+plt.figure(figsize=(10, 5))
+has_plots = False
+
+for idx, row in dog_32.iterrows():
+    pulses = row['ecg_pulses']
+    
+    # Converti se stringa
+    if isinstance(pulses, str):
+        pulses = pd.eval(pulses) #trasformo una riga che è una stringa in una lista
+        
+    # Plot solo se abbiamo dati validi
+    if isinstance(pulses, (list, np.ndarray)):
+        y_vals = deltas(list(pulses), row['duration'])
+        # Asse X: usiamo la somma cumulata per stare nell'intervallo (0, duration)
+        x_coords = np.cumsum(y_vals)
+        
+        plt.plot(x_coords, y_vals, label=f"Recording {idx}")
+        has_plots = True
+
+if has_plots:
+    plt.title("Deltas ECG - Cane 32")
+    plt.xlabel("Tempo (0, duration)")
+    plt.ylabel("Valore Delta")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+else:
+    print("Nessun dato ECG disponibile per il cane 32.")
+
+
+# Raggruppiamo per pet_id
+# Selezioniamo le colonne che vogliamo mantenere
+# Usiamo il metodo 'first' per le caratteristiche del cane (che non cambiano)
+# Usiamo 'max' per ottenere il massimo valore di mean_ecg_delta
+
+obs = df.groupby('pet_id').agg({
+    'breeds': 'first',
+    'weight': 'first',
+    'age': 'first',
+    'mean_ecg_delta': 'max'
+}).reset_index()
+
+# Visualizziamo le prime righe per controllo
+print(obs.head())
