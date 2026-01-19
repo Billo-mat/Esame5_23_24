@@ -1,0 +1,31 @@
+# --- ESERCIZIO 6 ---
+dog_32 = df[df['pet_id'] == 32]
+
+plt.figure(figsize=(10, 5))
+has_plots = False
+
+for idx, row in dog_32.iterrows():
+    pulses = row['ecg_pulses']
+    
+    # Converti se stringa
+    if isinstance(pulses, str):
+        pulses = pd.eval(pulses)
+        
+    # Plot solo se abbiamo dati validi
+    if isinstance(pulses, (list, np.ndarray)):
+        y_vals = deltas(list(pulses), row['duration'])
+        # Asse X: usiamo la somma cumulata per stare nell'intervallo (0, duration)
+        x_coords = np.cumsum(y_vals)
+        
+        plt.plot(x_coords, y_vals, label=f"Recording {idx}")
+        has_plots = True
+
+if has_plots:
+    plt.title("Deltas ECG - Cane 32")
+    plt.xlabel("Tempo (0, duration)")
+    plt.ylabel("Valore Delta")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+else:
+    print("Nessun dato ECG disponibile per il cane 32.")
