@@ -1,0 +1,13 @@
+# ### Exercise 2
+
+# 1. Raggruppiamo per 'pet_id' e selezioniamo le colonne da controllare.
+# .nunique() restituirà il numero di valori unici per ogni cane.
+check_consistency = df_dogs.groupby('pet_id')[['breeds', 'weight', 'age']].nunique()
+
+# 2. Scriviamo l'asserzione (Assertion).
+# Se tutto è coerente, ogni cella di 'check_consistency' deve essere uguale a 1.
+# .all().all() verifica che questa condizione sia vera per ogni riga e ogni colonna.
+assert (check_consistency <= 1).all().all(), "Errore di coerenza: un cane ha più valori diversi per breeds, weight o age."
+
+# Se l'esecuzione continua senza errori, il controllo è superato.
+print("Check di coerenza superato con successo.")
